@@ -11,7 +11,6 @@ SoftwareSerial mySerial(12,13); // RX, TX
 unsigned long seconds = 1000L; //unsigned = solo almacena numeros positivos
 unsigned long minutes = seconds * 60;
 unsigned long hours = minutes * 60;
-
 unsigned long tiempo1 = 0;
 unsigned long tiempo2 = 0;
 unsigned long tiempoSegundos = 0;

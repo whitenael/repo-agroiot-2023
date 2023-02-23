@@ -14,19 +14,24 @@ void setup(){
 }
  
 void loop(){
-  int ant = 0;
+  int ant = 0;  
+
   if(estado != ant)
   {
-       const char *msg = "1";      // carga numero 1 en mensaje a enviar
+       const char *msg = "2";      // carga numero 1 en mensaje a enviar       
        rf_driver.send((uint8_t *)msg, strlen(msg));  // envia el mensaje
        rf_driver.waitPacketSent();     // espera al envio correcto del mensaje
        estado = ant;
-       Serial.println(*msg);
+       Serial.println("Se envio un dato: ");
       
   }
 
+  Serial.print("Estado actual: ");  
+  Serial.println(estado);
+
+  delay(500);
 }
 void Bebedero()
 {
-estado++;  
+estado=1;  
 }
