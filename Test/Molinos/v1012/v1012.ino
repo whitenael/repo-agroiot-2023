@@ -77,40 +77,36 @@ void setup()
   Serial.begin(9600);
   mySerial.begin(9600);
   mySerial.listen();
-  gsm_init(operadora);
+  // gsm_init(operadora);
+  
+  gsm_recall(operadora);
 
   // SRT-04 CONFIG
   pinMode(PinTrig, OUTPUT);
   pinMode(PinEcho, INPUT_PULLUP);
-
-  // DHT22 CONFIG
-  // pinMode(DHTPIN, INPUT_PULLUP);
-  // dht.begin();
 }
 void loop()
 {
  // CALCULO DE DISTANCIA
 
-  // medida rep = tomarMedida();
+  medida rep = tomarMedida();
 
-  // Serial.println("########## RESULTADOS: ##########");
-  // Serial.print("Promedio de medidas: ");
-  // Serial.println(rep.value);
-  // Serial.print("Medidas validas: ");
-  // Serial.println(rep.validas);
-  // Serial.println();
-  // delay(1000);
+  Serial.println("########## RESULTADOS: ##########");
+  Serial.print("Promedio de medidas: ");
+  Serial.println(rep.value);
+  Serial.print("Medidas validas: ");
+  Serial.println(rep.validas);
+  Serial.println();
+  delay(1000);
   
-  // gsm_sendhttp(idSensor, rep.value, rep.validas);
-  // gsm_recall(operadora);
+  gsm_sendhttp(idSensor, rep.value, rep.validas);
+  gsm_recall(operadora);
   
-  // delay(10*seconds);
-  // gsm_recall(operadora);
+  delay(10*seconds);
+  gsm_recall(operadora);
 
-  // delay(30*minutes);
+  delay(3*seconds);
 
-  gsm_test();
-  delay(1200);
   gsm_recall(operadora);
 }
 

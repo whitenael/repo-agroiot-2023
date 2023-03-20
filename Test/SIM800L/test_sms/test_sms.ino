@@ -24,8 +24,16 @@ String apn_p_personal = "internet";
 void setup()
 {
   Serial.begin(9600); 
-  MOD_SIM800L.begin(9600);  
-  MOD_SIM800L.println("AT+CNMI=1,2,0,0,0"); //Configurar el SIM800L p/ que muestre msm por com. serie.
+  MOD_SIM800L.begin(9600);
+
+  MOD_SIM800L.println("AT"); //Once the handshake test is successful, it will back to OK
+  updateSerial();
+
+  MOD_SIM800L.println("AT+CMGF=1"); // Configuring TEXT mode
+  updateSerial();
+  MOD_SIM800L.println("AT+CNMI=1,2,0,0,0"); // Decides how newly arrived SMS messages should be handled
+  updateSerial();
+
   gsm_recall();
   //enviarMensaje(Numero_cliente, "Saldo");
   
@@ -33,9 +41,9 @@ void setup()
 void loop()
 {
   // gsm_recall();  
-  // enviarMensaje(Numero_cliente, "Saldo");
+  //enviarMensaje(Numero_cliente, "Saldo");
   recibirMensaje();  
-  delay(5*seconds);
+  delay(3*seconds);
 }
 void enviarMensaje(String numero, String msj)
 {
@@ -54,16 +62,16 @@ void enviarMensaje(String numero, String msj)
   Serial.println("Mensaje enviado");
 }
 
-void testearSenial(){
-  String senial;
-  MOD_SIM800L.println("AT+CSQ"); // Preguntamos por la senial
-  if(MOD_SIM800L.available()){
-    senial = MOD_SIM800L.readString(); //Guardar en la var valor el sms que recibe el Arduino
-    Serial.println("Intensidad de senal: "+ senial); //Imprime ese SMS en el monitor Serial
-    Serial.println("Fin de mensaje.");
-  }
-  delay(10000);
-}
+// void testearSenial(){
+//   String senial;
+//   MOD_SIM800L.println("AT+CSQ"); // Preguntamos por la senial
+//   if(MOD_SIM800L.available()){
+//     senial = MOD_SIM800L.readString(); //Guardar en la var valor el sms que recibe el Arduino
+//     Serial.println("Intensidad de senal: "+ senial); //Imprime ese SMS en el monitor Serial
+//     Serial.println("Fin de mensaje.");
+//   }
+//   delay(10000);
+// }
 
 void recibirMensaje() {
   String valor;

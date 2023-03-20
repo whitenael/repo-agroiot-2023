@@ -89,25 +89,24 @@ void setup()
 }
 void loop()
 {
- // CALCULO DE DISTANCIA
+ //CALCULO DE DISTANCIA  
+  medida rep = tomarMedida();
 
-  // medida rep = tomarMedida();
-
-  // Serial.println("########## RESULTADOS: ##########");
-  // Serial.print("Promedio de medidas: ");
-  // Serial.println(rep.value);
-  // Serial.print("Medidas validas: ");
-  // Serial.println(rep.validas);
-  // Serial.println();
-  // delay(1000);
+  Serial.println("########## RESULTADOS: ##########");
+  Serial.print("Promedio de medidas: ");
+  Serial.println(rep.value);
+  Serial.print("Medidas validas: ");
+  Serial.println(rep.validas);
+  Serial.println();
+  delay(1000);
   
-  // gsm_sendhttp(idSensor, rep.value, rep.validas);
-  // gsm_recall(operadora);
+  gsm_sendhttp(idSensor, rep.value, rep.validas);
+  gsm_recall(operadora);
   
-  // delay(10*seconds);
-  // gsm_recall(operadora);
+  delay(10*seconds);
+  gsm_recall(operadora);
 
-  // delay(30*minutes);
+  delay(30*minutes);
 
   gsm_test();
   delay(1200);
