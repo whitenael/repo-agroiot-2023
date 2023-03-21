@@ -41,17 +41,25 @@ void setup()
 void loop()
 {
   // gsm_recall();  
-  //enviarMensaje(Numero_cliente, "Saldo");
-  recibirMensaje();  
-  delay(3*seconds);
+  enviarMensaje(Numero_cliente, "Saldo");
+  delay(5*seconds);
+  String valor = recibirMensaje();    
+  
+  String saldo = valor.substring(87, 257);
+
+  Serial.println("---- NUEVO SMS RECIBIDO ------ ");
+  Serial.println(saldo);
+  Serial.println("---- FIN SMS RECIBIDO ------ ");
+  Serial.println(valor.length());
+
+  delay(30*seconds);
 }
 void enviarMensaje(String numero, String msj)
 {
   //Se establece el formato de SMS en ASCII
   MOD_SIM800L.write(27);
-  String config_numero = "AT+CMGS=\"" + numero + "\"\r\n";
-  Serial.println(config_numero);
-
+  String config_numero = "AT+CMGS=\"" + numero + "\"\r\n";  
+  MOD_SIM800L.println(config_numero);
   //Enviar contenido del SMS
   MOD_SIM800L.print(msj);
   delay(1000);
@@ -73,13 +81,13 @@ void enviarMensaje(String numero, String msj)
 //   delay(10000);
 // }
 
-void recibirMensaje() {
+String recibirMensaje() {
   String valor;
  //Lograr que nos muestre lo que nos llega de mensaje por el monitor serial.
   if(MOD_SIM800L.available()){
-    valor = MOD_SIM800L.readString(); //Guardar en la var valor el sms que recibe el Arduino
-    Serial.println("Nuevo SMS: "+ valor); //Imprime ese SMS en el monitor Serial
+    valor = MOD_SIM800L.readString(); //Guardar en la var valor el sms que recibe el Arduino    
   }    
+  return valor;
 }
 
 void updateSerial()
