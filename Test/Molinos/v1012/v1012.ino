@@ -1,3 +1,6 @@
+#include <ArduinoJson.hpp>
+#include <ArduinoJson.h>
+
 /* VERSION 1012
 * ULTIMA UPDATE: 25/04/22
 * AUTOR: LUIS MANUEL VERA
@@ -6,6 +9,7 @@
 // CONVERSOR DE TIEMPO
 #include <SoftwareSerial.h>
 #include <NewPing.h>
+
 SoftwareSerial mySerial(12,13); // RX, TX
 
 unsigned long seconds = 1000L; //unsigned = solo almacena numeros positivos
@@ -15,7 +19,11 @@ unsigned long tiempo1 = 0;
 unsigned long tiempo2 = 0;
 unsigned long tiempoSegundos = 0;
 
+DynamicJsonDocument doc(1024); 
+
 String operadora = "personal";
+String Numero_cliente = "150";
+String Numero_telefono = "2216068130";
 
 //APN ORIGINAL y CONECTIVIDAD CLARO
 String apn_claro   = "igprs.claro.com.ar";
@@ -36,7 +44,7 @@ String apn_p_personal2 = "datos";
 String apiKey   = "2NE9RSVZXWL2X2GB";    
 
 String url = "www.agroiot.com.ar/servicios/sensores/cargar/muestra";
-String url_datos_linea;  // (POST)
+String url_datos_linea = "https://agroiot.com.ar/servicios/sensores/registrar/datos/linea";  // (POST)
 
 // CONSTANTES TANQUE (especificadas por el cliente) / expresadas en CM
 
@@ -44,21 +52,21 @@ String url_datos_linea;  // (POST)
 
 const float desc_alras = 40; // medida al pelo del agua
 const float alto_tanque = 100; // medidas del tanque
-const float diam_tanque = 755;
+
+const int cicloSemanal = 144; // Estimado de ciclos hechos a la semana
+int ciclosActuales = 0; // Lo utilizamos para chequear los ciclos completados, una vez llegado al ciclo semanal, ejecuta una rutina
 
 struct medida{
   float value;
   int validas;
 };
 
-float vol_cm3;
-float vol_lit;
-float auxiliar;
-float llenado;
-
-const double pi = 3.14159;
-
-double pmin = 25.00; 
+struct datos{
+  String saldo;
+  String Numero_telefono;
+  String operadora;
+  String apiKey;
+};
 
 // #### FIN VARIABLES PARA EL CALCULO DE MEDIDA #### //
 
@@ -88,23 +96,22 @@ void setup()
 void loop()
 {
  // CALCULO DE DISTANCIA
+  // medida rep = tomarMedida();
 
-  medida rep = tomarMedida();
+  // Serial.println("########## RESULTADOS: ##########");
+  // Serial.print("Promedio de medidas: ");
+  // Serial.println(rep.value);
+  // Serial.print("Medidas validas: ");
+  // Serial.println(rep.validas);
+  // Serial.println();
+  // delay(1000);
+  
+  //gsm_sendhttp(idSensor, rep.value, rep.validas);
+  //gsm_recall(operadora);
 
-  Serial.println("########## RESULTADOS: ##########");
-  Serial.print("Promedio de medidas: ");
-  Serial.println(rep.value);
-  Serial.print("Medidas validas: ");
-  Serial.println(rep.validas);
-  Serial.println();
-  delay(1000);
-  
-  gsm_sendhttp(idSensor, rep.value, rep.validas);
-  gsm_recall(operadora);
-  
   delay(10*seconds);
-  gsm_recall(operadora);
 
+  enviarDatos("500");
   delay(3*seconds);
 
   gsm_recall(operadora);
@@ -329,6 +336,49 @@ void gsm_sendhttp(int value1, float value2, int value3){
   delay(1000);
 }
 
+void gsm_sendjson(int value1, String json){
+  
+  mySerial.listen();  
+ 
+  Serial.println("Iniciando HTTP ... (" + String(value1) + ")");
+  
+  mySerial.println("AT+HTTPINIT");
+  print_gsm_status();
+  delay(1000);
+  mySerial.println("AT+HTTPPARA=CID,1");
+  print_gsm_status();
+  delay(1000);
+  
+  mySerial.println("AT+HTTPPARA=URL," + url_datos_linea );
+  print_gsm_status();
+  delay(1000);
+  
+  mySerial.println("AT+HTTPPARA=CONTENT,application/json");
+  print_gsm_status();
+  delay(1000);
+  
+  mySerial.println("AT+HTTPDATA=" + String(json.length()) + ",10000");
+  print_gsm_status();
+  delay(1000);
+  
+  mySerial.println(json);
+  print_gsm_status();
+  delay(10000);
+  mySerial.println("AT+HTTPACTION=1");
+  print_gsm_status();
+  delay(5000);
+  mySerial.println("AT+HTTPREAD");
+  print_gsm_status();
+  delay(1000);
+  mySerial.println("AT+HTTPTERM");
+  print_gsm_status(); 
+  delay(1000);
+
+  Serial.println(" ");
+  Serial.println("Finalizando HTTP ... (" + String(value1) + ")");
+  delay(1000);
+}
+
 void gsm_out(){
 
   Serial.println("Finalizando conexión GPRS ...");
@@ -399,4 +449,79 @@ void gsm_recall(String operadora){
   delay(1000);
   
   delay(10*seconds);
+}
+
+String recibirMensaje() {
+  String valor;
+ //Lograr que nos muestre lo que nos llega de mensaje por el monitor serial.
+  if(mySerial.available()){
+    valor = mySerial.readString(); //Guardar en la var valor el sms que recibe el Arduino    
+  }    
+  return valor;
+}
+
+void enviarMensaje(String numero, String msj)
+{
+  //Se establece el formato de SMS en ASCII
+  mySerial.write(27);
+  String config_numero = "AT+CMGS=\"" + numero + "\"\r\n";  
+  mySerial.println(config_numero);
+  //Enviar contenido del SMS
+  mySerial.print(msj);
+  delay(1000);
+
+  //Enviar Ctrl+Z
+  mySerial.write((char)26);
+  delay(1000);
+  Serial.println("Mensaje enviado");
+}
+
+String consultarSaldo(){
+  enviarMensaje(Numero_cliente, "Saldo");
+  delay(5*seconds);
+  String valor = recibirMensaje();    
+
+  Serial.println("---- NUEVO SMS RECIBIDO ------ ");
+  Serial.println(valor);
+  Serial.println("---- FIN SMS RECIBIDO ------ ");
+  delay(5*seconds);
+
+  return valor;
+}
+
+
+void chequearCiclos(){
+  if(ciclosActuales == 0){
+    String saldo = consultarSaldo();
+
+    Serial.println("Enviando datos...");
+    enviarDatos(saldo);    
+    Serial.println("Datos enviados.");
+
+    ciclosActuales++;    
+  }
+  
+  else {
+    ciclosActuales++;
+    Serial.println("Ciclos actuales: ");
+    Serial.print(ciclosActuales);
+    Serial.println();
+
+    if (ciclosActuales == cicloSemanal)
+      ciclosActuales = 0;
+  }
+}
+
+void enviarDatos(String saldo) {
+    String json;  
+    
+    doc["idSensor"] = idSensor;
+    doc["saldo"] = saldo;
+    doc["numeroCliente"] = Numero_telefono;
+    doc["operadora"] = operadora;
+    doc["apiKey"] = apiKey;
+
+    serializeJson(doc, json);  
+
+    gsm_sendjson(idSensor, json);
 }

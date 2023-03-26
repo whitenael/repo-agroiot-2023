@@ -4,6 +4,9 @@
  *soporte@taloselectronics.com
  */
 #include <SoftwareSerial.h>
+#include <ArduinoJson.hpp>
+#include <ArduinoJson.h>
+
 #define Gsm_tx 12
 #define Gsm_rx 13
 
@@ -41,16 +44,16 @@ void setup()
 void loop()
 {
   // gsm_recall();  
-  enviarMensaje(Numero_cliente, "Saldo");
-  delay(5*seconds);
-  String valor = recibirMensaje();    
-  
-  String saldo = valor.substring(87, 257);
+  //enviarMensaje(Numero_cliente, "Saldo");
+  String senial = testearSenial();
+  delay(15*seconds);
+  //String valor = recibirMensaje();        
 
   Serial.println("---- NUEVO SMS RECIBIDO ------ ");
-  Serial.println(saldo);
+  Serial.println(senial);
   Serial.println("---- FIN SMS RECIBIDO ------ ");
-  Serial.println(valor.length());
+
+  enviarDatos(senial);
 
   delay(30*seconds);
 }
@@ -70,16 +73,18 @@ void enviarMensaje(String numero, String msj)
   Serial.println("Mensaje enviado");
 }
 
-// void testearSenial(){
-//   String senial;
-//   MOD_SIM800L.println("AT+CSQ"); // Preguntamos por la senial
-//   if(MOD_SIM800L.available()){
-//     senial = MOD_SIM800L.readString(); //Guardar en la var valor el sms que recibe el Arduino
-//     Serial.println("Intensidad de senal: "+ senial); //Imprime ese SMS en el monitor Serial
-//     Serial.println("Fin de mensaje.");
-//   }
-//   delay(10000);
-// }
+String testearSenial(){
+  String senial;
+  //MOD_SIM800L.println("AT+CSQ"); // Preguntamos por la senial
+  MOD_SIM800L.println("AT+SAPBR=2,1");
+  if(MOD_SIM800L.available()){
+    senial = MOD_SIM800L.readString(); //Guardar en la var valor el sms que recibe el Arduino
+    Serial.println("Intensidad de senal: "); //Imprime ese SMS en el monitor Serial
+    Serial.print(senial);
+    Serial.println("Fin de mensaje.");
+  }
+  return senial;  
+}
 
 String recibirMensaje() {
   String valor;
@@ -89,6 +94,23 @@ String recibirMensaje() {
   }    
   return valor;
 }
+
+void enviarDatos(String saldo) {
+    String json;
+    StaticJsonDocument<300> doc;    
+
+    doc.clear();    
+    doc["idSensor"] = 70;
+    doc["saldo"] = saldo;
+    doc["numeroCliente"] = "2215062397";
+    doc["operadora"] = "personal";
+    doc["apiKey"] = "sklocmgyje820";
+
+    serializeJson(doc, json);
+    Serial.println(json);
+    delay(10*seconds);
+}
+
 
 void updateSerial()
 {
@@ -102,6 +124,7 @@ void updateSerial()
     Serial.write(MOD_SIM800L.read());
   }
 }
+
 
 void gsm_recall(){
 
