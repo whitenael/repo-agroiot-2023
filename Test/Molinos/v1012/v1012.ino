@@ -1,6 +1,3 @@
-#include <ArduinoJson.hpp>
-#include <ArduinoJson.h>
-
 /* VERSION 1012
 * ULTIMA UPDATE: 25/04/22
 * AUTOR: LUIS MANUEL VERA
@@ -9,7 +6,6 @@
 // CONVERSOR DE TIEMPO
 #include <SoftwareSerial.h>
 #include <NewPing.h>
-
 SoftwareSerial mySerial(12,13); // RX, TX
 
 unsigned long seconds = 1000L; //unsigned = solo almacena numeros positivos
@@ -19,11 +15,7 @@ unsigned long tiempo1 = 0;
 unsigned long tiempo2 = 0;
 unsigned long tiempoSegundos = 0;
 
-DynamicJsonDocument doc(1024); 
-
 String operadora = "personal";
-String Numero_cliente = "150";
-String Numero_telefono = "2216068130";
 
 //APN ORIGINAL y CONECTIVIDAD CLARO
 String apn_claro   = "igprs.claro.com.ar";
@@ -37,6 +29,9 @@ String apn_p_personal = "internet";
 
 // APN 2 PERSONAL
 
+String numeroCliente = "2216068130";
+String numeroSaldo = "150";
+
 String apn_personal2 = "datos.personal.com";
 String apn_u_personal2 = "datos";
 String apn_p_personal2 = "datos";
@@ -44,7 +39,7 @@ String apn_p_personal2 = "datos";
 String apiKey   = "2NE9RSVZXWL2X2GB";    
 
 String url = "www.agroiot.com.ar/servicios/sensores/cargar/muestra";
-String url_datos_linea = "https://agroiot.com.ar/servicios/sensores/registrar/datos/linea";  // (POST)
+String url_datos_linea = "www.agroiot.com.ar/servicios/sensores/registrar/datos/linea";  // (POST)
 
 // CONSTANTES TANQUE (especificadas por el cliente) / expresadas en CM
 
@@ -52,21 +47,21 @@ String url_datos_linea = "https://agroiot.com.ar/servicios/sensores/registrar/da
 
 const float desc_alras = 40; // medida al pelo del agua
 const float alto_tanque = 100; // medidas del tanque
-
-const int cicloSemanal = 144; // Estimado de ciclos hechos a la semana
-int ciclosActuales = 0; // Lo utilizamos para chequear los ciclos completados, una vez llegado al ciclo semanal, ejecuta una rutina
+const float diam_tanque = 755;
 
 struct medida{
   float value;
   int validas;
 };
 
-struct datos{
-  String saldo;
-  String Numero_telefono;
-  String operadora;
-  String apiKey;
-};
+float vol_cm3;
+float vol_lit;
+float auxiliar;
+float llenado;
+
+const double pi = 3.14159;
+
+double pmin = 25.00; 
 
 // #### FIN VARIABLES PARA EL CALCULO DE MEDIDA #### //
 
@@ -85,36 +80,36 @@ void setup()
   Serial.begin(9600);
   mySerial.begin(9600);
   mySerial.listen();
-  // gsm_init(operadora);
-  
-  gsm_recall(operadora);
+  gsm_init(operadora);
 
   // SRT-04 CONFIG
   pinMode(PinTrig, OUTPUT);
   pinMode(PinEcho, INPUT_PULLUP);
+
+  // DHT22 CONFIG
+  // pinMode(DHTPIN, INPUT_PULLUP);
+  // dht.begin();
 }
 void loop()
 {
- // CALCULO DE DISTANCIA
-  // medida rep = tomarMedida();
+ //CALCULO DE DISTANCIA  
+  medida rep = tomarMedida();
 
-  // Serial.println("########## RESULTADOS: ##########");
-  // Serial.print("Promedio de medidas: ");
-  // Serial.println(rep.value);
-  // Serial.print("Medidas validas: ");
-  // Serial.println(rep.validas);
-  // Serial.println();
-  // delay(1000);
+  Serial.println("########## RESULTADOS: ##########");
+  Serial.print("Promedio de medidas: ");
+  Serial.println(rep.value);
+  Serial.print("Medidas validas: ");
+  Serial.println(rep.validas);
+  Serial.println();
+  delay(1000);
   
-  //gsm_sendhttp(idSensor, rep.value, rep.validas);
-  //gsm_recall(operadora);
-
+  gsm_sendhttp(idSensor, rep.value, rep.validas);
+  enviarDatos();
+  
   delay(10*seconds);
-
-  enviarDatos("500");
-  delay(3*seconds);
-
   gsm_recall(operadora);
+
+  //delay(30*minutes);
 }
 
 // Tenemos que tomar un total de 12 medidas: 4 por minuto 
@@ -336,7 +331,7 @@ void gsm_sendhttp(int value1, float value2, int value3){
   delay(1000);
 }
 
-void gsm_sendjson(int value1, String json){
+void gsm_sendjson(String data, int value1){
   
   mySerial.listen();  
  
@@ -349,7 +344,7 @@ void gsm_sendjson(int value1, String json){
   print_gsm_status();
   delay(1000);
   
-  mySerial.println("AT+HTTPPARA=URL," + url_datos_linea );
+  mySerial.println("AT+HTTPPARA=URL," + url);
   print_gsm_status();
   delay(1000);
   
@@ -357,11 +352,11 @@ void gsm_sendjson(int value1, String json){
   print_gsm_status();
   delay(1000);
   
-  mySerial.println("AT+HTTPDATA=" + String(json.length()) + ",10000");
+  mySerial.println("AT+HTTPDATA=" + String(data.length()) + ",10000");
   print_gsm_status();
   delay(1000);
   
-  mySerial.println(json);
+  mySerial.println(data);
   print_gsm_status();
   delay(10000);
   mySerial.println("AT+HTTPACTION=1");
@@ -451,13 +446,19 @@ void gsm_recall(String operadora){
   delay(10*seconds);
 }
 
-String recibirMensaje() {
-  String valor;
- //Lograr que nos muestre lo que nos llega de mensaje por el monitor serial.
-  if(mySerial.available()){
-    valor = mySerial.readString(); //Guardar en la var valor el sms que recibe el Arduino    
-  }    
-  return valor;
+void enviarDatos() {    
+    String saldo = consultarSaldo();    
+    String data = PostData(idSensor, saldo, numeroCliente, operadora, apiKey);
+    gsm_sendjson(data, idSensor);
+    Serial.println("PostData:" );
+    Serial.print(data);
+    delay(10*seconds);
+}
+
+String PostData(int idSensor, String saldo, String numero, String operadora, String apiKey){
+  //String data = "apiKey="+apiKey+"&idSensor="+idSensor+"&saldo="+saldo+"&numeroCliente="+numero+"&operadora="+operadora;
+  String input = "{\"apiKey\":\""+apiKey+"\",\"idSensor\":"+idSensor+",\"saldo\":\""+saldo+"\", \"numeroCliente\":\""+numero+"\",\"operadora\":\""+operadora+"\"}";
+  return input;
 }
 
 void enviarMensaje(String numero, String msj)
@@ -476,52 +477,23 @@ void enviarMensaje(String numero, String msj)
   Serial.println("Mensaje enviado");
 }
 
+String recibirMensaje() {
+  String valor;
+ //Lograr que nos muestre lo que nos llega de mensaje por el monitor serial.
+  if(mySerial.available()){
+    valor = mySerial.readString(); //Guardar en la var valor el sms que recibe el Arduino    
+  }    
+  return valor;
+}
+
 String consultarSaldo(){
-  enviarMensaje(Numero_cliente, "Saldo");
+  enviarMensaje(numeroSaldo, "Saldo");  
   delay(5*seconds);
-  String valor = recibirMensaje();    
+  String valor = recibirMensaje();        
 
   Serial.println("---- NUEVO SMS RECIBIDO ------ ");
   Serial.println(valor);
   Serial.println("---- FIN SMS RECIBIDO ------ ");
-  delay(5*seconds);
 
   return valor;
-}
-
-
-void chequearCiclos(){
-  if(ciclosActuales == 0){
-    String saldo = consultarSaldo();
-
-    Serial.println("Enviando datos...");
-    enviarDatos(saldo);    
-    Serial.println("Datos enviados.");
-
-    ciclosActuales++;    
-  }
-  
-  else {
-    ciclosActuales++;
-    Serial.println("Ciclos actuales: ");
-    Serial.print(ciclosActuales);
-    Serial.println();
-
-    if (ciclosActuales == cicloSemanal)
-      ciclosActuales = 0;
-  }
-}
-
-void enviarDatos(String saldo) {
-    String json;  
-    
-    doc["idSensor"] = idSensor;
-    doc["saldo"] = saldo;
-    doc["numeroCliente"] = Numero_telefono;
-    doc["operadora"] = operadora;
-    doc["apiKey"] = apiKey;
-
-    serializeJson(doc, json);  
-
-    gsm_sendjson(idSensor, json);
 }

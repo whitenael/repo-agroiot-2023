@@ -106,7 +106,7 @@ void loop()
   delay(10*seconds);
   gsm_recall(operadora);
 
-  delay(30*minutes);
+  //delay(30*minutes);
 
   gsm_test();
   delay(1200);
