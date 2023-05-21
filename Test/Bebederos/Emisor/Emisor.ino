@@ -1,37 +1,53 @@
-#include <RH_ASK.h>
 #include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
 
-const char id = 1;
+//Declaremos los pines CE y el CSN
+#define CE_PIN 9
+#define CSN_PIN 10
+ 
+//Variable con la dirección del canal por donde se va a transmitir
+byte direccion[5] ={'c','a','n','a','l'};
 
-RH_ASK askRequest;
-RH_ASK askResponse;
+//creamos el objeto radio (NRF24L01)
+RF24 radio(CE_PIN, CSN_PIN);
 
-const byte solicitudLen = 1;
-
+//vector con los datos a enviar
+float datos[3];
 
 void setup()
 {
-  Serial.begin(9600);
-  askRequest.init();
-  askResponse.init();
+  //inicializamos el NRF24L01 
+  radio.begin();
+  //inicializamos el puerto serie
+  Serial.begin(9600); 
+ 
+//Abrimos un canal de escritura
+ radio.openWritingPipe(direccion);
+ 
 }
-
+ 
 void loop()
-{      
-   uint8_t msg[solicitudLen];
-   uint8_t msgLen = sizeof(msg);
-
-  if (askResponse.recv(msg, &msgLen))
+{ 
+ //cargamos los datos en la variable datos[]
+ datos[0]=420.69;
+ datos[1]=millis();
+ datos[2]=3.14;
+ //enviamos los datos
+ bool ok = radio.write(datos, sizeof(datos));
+  //reportamos por el puerto serial los datos enviados   
+  if(ok)
   {
-    if (msg[0] == id){
-      // Le envio medida actual del sensor
-      char estado = "F"; // F = LLENO, E = VACIO
-      char *msg = estado; 
-
-      // Envio la informacion
-      askRequest.send((uint8_t *)msg, strlen(*msg));
-      askRequest.waitPacketSent();
-    }
+     Serial.print("Datos enviados: "); 
+     Serial.print(datos[0]); 
+     Serial.print(" , "); 
+     Serial.print(datos[1]); 
+     Serial.print(" , "); 
+     Serial.println(datos[2]); 
   }
-
+  else
+  {
+     Serial.println("No se ha podido enviar");
+  }
+  delay(1000);
 }

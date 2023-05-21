@@ -42,14 +42,25 @@ void loop()
     for(int i = 0; i < N; i++)
     {
       radio.write(&IDBebederos[i], sizeof(IDBebederos[i])); //enviamos a los slaves los ID secuencialmente
-      radio.startListening(); //El maestro pasa a receptor
+
       radio.openReadingPipe(1, direccion); //abrimos el canal de lectura
+      radio.startListening(); //El maestro pasa a receptor
+
+    for (int j = 0; j <= 100; j++){
       if(radio.available()) //Si hay datos disponibles...
       {
         radio.read(&estados[i], sizeof(estados[i])); //leemos los estados y los guardamos en el array estados[]
+        Serial.print("SE REGISTRO UNA RESPUESTA DEL BEBEDERO ");
+        Serial.println(i);
+
         Serial.print("Estado: ");
         Serial.println(estados[i]);
       }
+      delay(100);
+    }     
+      Serial.print("No se registro respuesta del BEBEDERO: ");
+      Serial.println(i);
+
       radio.stopListening(); //El maestro pasa a emisor
     }
   }

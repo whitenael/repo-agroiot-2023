@@ -4,6 +4,7 @@
 
 #define ID_BEBEDERO 0x01
 #define LED 2
+#define REF 3
 //Declaramos los pines CE y el CSN
 #define CE_PIN 9
 #define CSN_PIN 10
@@ -25,6 +26,7 @@ void setup()
   pinMode(LED, OUTPUT);
   //inicializamos el NRF24L01 
   radio.begin();
+  pinMode(REF, OUTPUT);
   //inicializamos el puerto serie
   Serial.begin(9600); 
   Serial.println("Iniciando Bebedero...");
@@ -33,8 +35,8 @@ void setup()
   //Empezamos a escuchar por el canal
   radio.startListening(); 
 
-  //Interrupcion para cuando el bebedero se queda sin agua
-  attachInterrupt(digitalPinToInterrupt(2), EstadoBebedero, RISING); 
+  //Interrupcion para cuando el bebedero se queda sin agua  
+  attachInterrupt(digitalPinToInterrupt(2), EstadoBebedero, FALLING); 
 }
 
 void loop()
@@ -42,22 +44,30 @@ void loop()
   const int ant = 0;
   if(radio.available()) //Si hay mensajes disponibles...
   {
+    digitalWrite(REF, HIGH);
     //leemos el ID enviado desde el Maestro y lo guardamos en la variable ID
     radio.read(&ID, sizeof(ID));
     Serial.print("Identificando ID...");   
+
     if(ID_BEBEDERO == ID) //comparamos el ID mandado desde el Maestro con el del Bebedero
     {
       radio.stopListening(); //el bebedero pasa a emisor
       radio.closeReadingPipe(direccion); //cierro el canal de lectura
-      radio.openWritingPipe(direccion); //abro el canal de escritura
+      Serial.println("Se cierra canal de lectura...");
+
+      radio.openWritingPipe(direccion); //abro el canal de escritura      
+      Serial.println("Se abre el canal de escritura...");
+
       Serial.println(ID);  
-      Serial.println("ID Identificado exitosamente");      
+      Serial.print("ID Identificado exitosamente: ");      
+      Serial.println(ID);      
+
       if(estado != ant) //me pregunto si el bebedero reporto falta de agua
       {
-        radio.write(&estado, sizeof(estado)); //enviamos un 1 desde el bebedero
+        radio.write(&estado, sizeof(estado)); //enviamos un 1 desde el bebedero      
         digitalWrite(LED, HIGH);
         delay(1000);
-        digitalWrite(LED,LOW);                
+        //digitalWrite(LED,LOW);                
         Serial.print("Estado: ");
         Serial.println(estado);
       }
@@ -68,12 +78,14 @@ void loop()
         Serial.println(ant);
       } 
     }     
-  }    
-
-  delay(1000);
+  }   
+  // Reabrimos canal de escucha 
+  radio.openReadingPipe(1,direccion);
+  //Empezamos a escuchar por el canal
+  radio.startListening();  
 }
 
 void EstadoBebedero()
-{
+{  
   estado = 1;    
 }
