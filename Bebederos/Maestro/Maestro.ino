@@ -30,6 +30,7 @@ void setup()
   for(int j = 0x01; j <= N; j = j + 0x01) //Codifico los ID y los almaceno en el array segun N cantidad
   {
     IDBebederos[j-1] = j; 
+    Serial.println(j);
   }
 }
 
@@ -52,4 +53,5 @@ void loop()
       radio.stopListening(); //El maestro pasa a emisor
     }
   }
+  delay(1000);
 }
